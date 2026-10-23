@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: parkwise-smart-parking
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: parkwise-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PARKWISE_DB_PATH
+        value: /var/data/parkwise.sqlite
+      - key: PARKWISE_SETUP_KEY
+        sync: false

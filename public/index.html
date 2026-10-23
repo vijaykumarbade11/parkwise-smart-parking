@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en"><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Parkwise | Smart Parking</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/vendor/tesseract/tesseract.min.js" defer></script>
+    <script src="app.js?v=8" defer>
+
+    </script>
+    </head>
+<body>
+    <header>
+        <div class="brand">PARK<span>WISE</span>
+            <small>SMART PARKING MANAGEMENT</small>
+        </div>
+        <div class="owner">Parking Agency Owner
+            <span class="live" id="backend-status" role="status">● Connecting to backend</span>
+        </div>
+        <div class="account-controls" id="account-controls" hidden>
+            <label class="lot-picker">Parking location
+                <select id="lot-select" aria-label="Select parking location"></select>
+            </label>
+            <span id="signed-in-user"></span>
+            <button id="logout-button" class="secondary" type="button">Sign out</button>
+        </div>
+    </header>
+<section id="auth-screen" class="auth-shell" hidden>
+    <form id="auth-form" class="panel auth-panel">
+        <p class="eyebrow">PARKWISE ACCOUNT</p>
+        <h1 id="auth-heading">Sign in</h1>
+        <p id="auth-description" class="muted"></p>
+        <label>Username<input id="auth-username" autocomplete="username" required maxlength="40"></label>
+        <label>Password<input id="auth-password" type="password" autocomplete="current-password" required minlength="12" maxlength="200"></label>
+        <label id="confirm-password-wrap" hidden>Confirm password<input id="auth-confirm-password" type="password" autocomplete="new-password" minlength="12" maxlength="200"></label>
+        <label id="setup-key-wrap" hidden>Administrator setup key<input id="setup-key" type="password" autocomplete="off"></label>
+        <button id="auth-submit" class="primary" type="submit">Sign in</button>
+        <p class="auth-help">Passwords must be at least 12 characters. This local app does not send them to an external service.</p>
+        <div id="auth-notice" role="status"></div>
+    </form>
+</section>
+<main id="app-main" hidden>
+    <section class="hero">
+        <div>
+            <p class="eyebrow">PARKING OPERATIONS</p>
+            <h1>Smart Parking Dashboard</h1>
+            <p>Manage entries, exits, parking history and revenue in one place.</p>
+        </div>
+        <div class="capacity-chip">
+            <b id="capacity">200</b>
+            <span>total spaces</span>
+        </div>
+    </section>
+<div id="notice" role="status">
+
+</div>
+<div class="dashboard-refresh"><span class="muted" id="last-refreshed">Dashboard not refreshed yet</span><button id="refresh-button" class="secondary" type="button">Refresh data</button></div>
+<section class="stats">
+    <article>
+        <span>Total capacity</span>
+        <strong id="s-capacity">200</strong>
+    </article>
+    <article>
+        <span>Currently parked</span>
+        <strong id="s-occupied">0</strong>
+    </article>
+    <article>
+        <span>Available spaces</span>
+        <strong id="s-available">200</strong>
+    </article>
+    <article>
+        <span>Total revenue</span>
+        <strong id="s-revenue">₹0.00</strong>
+    </article>
+</section>
+<nav>
+    <button class="tab active" data-tab="entry">Vehicle entry</button>
+    <button class="tab" data-tab="exit">Vehicle exit</button>
+    <button class="tab" data-tab="parked">Parked vehicles</button>
+    <button class="tab" data-tab="history">Parking history</button>
+    <button class="tab" data-tab="reservations">Reservations</button>
+    <button class="tab" data-tab="reports">Reports</button>
+    <button class="tab" data-tab="settings">Settings</button>
+    <button class="tab admin-only" data-tab="admin" hidden>Admin</button>
+</nav>
+<section class="view active" id="view-entry">
+    <div class="panel">
+        <h2>Register vehicle</h2>
+        <p class="muted">Type a previously exited vehicle number to get suggestions from history.</p>
+        <form id="entry-form" class="form-grid">
+            <label>Vehicle number *<input id="vehicle-number" list="past-suggestions" required maxlength="20" placeholder="MH12AB1234" autocomplete="off">
+                <datalist id="past-suggestions">
+
+                </datalist></label>
+            <label>Owner name *<input id="owner-name" required maxlength="80" placeholder="Customer name"></label>
+            <label>Vehicle type<select id="vehicle-type"><option>Car</option><option>Bike</option><option>SUV</option><option>Scooter</option><option>Auto</option><option>Van</option><option>Other</option></select></label>
+            <label>Contact number<input id="phone" maxlength="20" placeholder="Optional"></label>
+            <label>Parking space<select id="entry-slot"><option value="">Auto-assign first available</option></select></label>
+            <div class="scanner-controls">
+                <button id="start-plate-scan" class="secondary" type="button">Scan plate with camera</button>
+                <button id="start-qr-scan" class="secondary" type="button">Scan plate QR code</button>
+                <p class="muted">Scanners accept Indian registration formats only. Camera access requires permission; QR values are checked as number plates.</p>
+            </div>
+            <button class="primary" type="submit">Register entry & assign slot</button>
+        </form>
+        <section id="entry-ticket" class="ticket-card" aria-live="polite" hidden></section>
+    </div>
+</section>
+<div id="scanner-panel" class="scanner-panel" hidden>
+    <video id="scanner-video" playsinline muted></video>
+    <p id="scanner-status" class="muted" aria-live="polite"></p>
+    <button id="stop-scan" class="secondary" type="button">Stop camera</button>
+</div>
+<section class="view" id="view-reservations">
+    <div class="panel">
+        <h2>Reserve a parking space</h2>
+        <p class="muted">Create a reservation for a future arrival. Reservations do not process payments.</p>
+        <form id="reservation-form" class="form-grid">
+            <label>Vehicle number *<input id="reservation-number" required maxlength="24" placeholder="MH12AB1234"></label>
+            <label>Owner name *<input id="reservation-owner" required maxlength="80"></label>
+            <label>Vehicle type<select id="reservation-type"><option>Car</option><option>Bike</option><option>SUV</option><option>Scooter</option><option>Auto</option><option>Van</option><option>Other</option></select></label>
+            <label>Contact number<input id="reservation-phone" maxlength="20"></label>
+            <label>Arrival<input id="reservation-start" type="datetime-local" required></label>
+            <label>Until<input id="reservation-end" type="datetime-local" required></label>
+            <button class="primary" type="submit">Create reservation</button>
+        </form>
+    </div>
+    <div class="panel">
+        <h2>Reservations</h2>
+        <div class="table-wrap"><table><thead><tr><th>Vehicle</th><th>Owner</th><th>Arrival</th><th>Until</th><th>Status</th><th>Action</th></tr></thead><tbody id="reservations-body"></tbody></table></div>
+    </div>
+</section>
+<section class="view" id="view-reports">
+    <div class="panel">
+        <div class="panel-head"><div><h2>Reports</h2><p class="muted">Revenue and parking sessions for the selected date range.</p></div><div class="actions"><label>From<input id="report-from" type="date"></label><label>To<input id="report-to" type="date"></label><button id="refresh-reports" type="button" class="secondary">Apply filters</button><a class="secondary" id="report-export" href="/api/export/history.csv">Export CSV ↓</a></div></div>
+        <div class="report-stats"><article><span>Revenue</span><strong id="report-revenue">₹0.00</strong></article><article><span>Completed sessions</span><strong id="report-sessions">0</strong></article><article><span>Average fee</span><strong id="report-average">₹0.00</strong></article><article><span>Currently parked</span><strong id="report-parked">0</strong></article><article><span>Peak occupancy</span><strong id="report-peak">0</strong></article><article><span>Average stay</span><strong id="report-stay">0 min</strong></article></div>
+        <h3>Daily revenue (latest 30 days)</h3>
+        <div id="daily-report" class="daily-report"></div>
+    </div>
+</section>
+<section class="view" id="view-exit">
+    <div class="panel">
+        <h2>Vehicle exit</h2>
+        <p class="muted">Minimum charge is one hour; each started hour is charged in full.</p>
+        <form id="exit-form" class="inline-form">
+            <label>Vehicle number<input id="exit-number" list="active-suggestions" required placeholder="MH12AB1234">
+                <datalist id="active-suggestions">
+
+                </datalist>
+            </label>
+            <button class="primary" type="submit">Calculate fee</button>
+            <button id="start-ticket-scan" class="secondary" type="button">Scan ticket QR to find vehicle</button>
+        </form>
+        <p class="muted">Ticket QR codes contain only a valid Indian vehicle registration number.</p>
+        <div id="exit-result"></div>
+    </div>
+</section>
+<section class="view" id="view-parked">
+    <div class="panel">
+        <div class="panel-head">
+            <div>
+                <h2>Currently parked</h2>
+                <p class="muted">Active vehicles and assigned slots</p>
+            </div>
+            <input id="parked-search" class="search" aria-label="Search parked vehicles" placeholder="Search vehicle or owner">
+        </div>
+        <div class="table-wrap">
+            <section class="slot-map-section" aria-labelledby="slot-map-heading">
+                <div class="panel-head slot-map-head">
+                    <div>
+                        <h3 id="slot-map-heading">Parking spaces</h3>
+                        <p class="muted">Select any space to view its status and vehicle details.</p>
+                    </div>
+                    <div class="slot-legend" aria-label="Parking space legend">
+                        <span><i class="legend-dot occupied"></i>Occupied</span>
+                        <span><i class="legend-dot available"></i>Available</span>
+                    </div>
+                </div>
+                <div id="slot-map" class="slot-map" aria-label="Parking spaces"></div>
+                <div id="slot-details" class="slot-details" aria-live="polite">
+                    <p class="muted">Select a parking space to see its details.</p>
+                </div>
+            </section>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vehicle</th>
+                        <th>Owner</th>
+                        <th>Type</th>
+                        <th>Entry time</th>
+                        <th>Slot</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="parked-body"></tbody>
+            </table>
+        </div>
+    </div>
+</section>
+<section class="view" id="view-history">
+    <div class="panel">
+        <h2>Parking history</h2>
+        <p class="muted">Completed sessions and fees. Vehicles still parked appear under Parked vehicles until checkout.</p>
+    </div>
+    <div class="actions">
+        <input id="history-search" class="search" aria-label="Search parking history" placeholder="Search history">
+        <label class="date-filter">From<input id="history-from" type="date"></label>
+        <label class="date-filter">To<input id="history-to" type="date"></label>
+        <button id="history-apply" class="secondary" type="button">Apply</button>
+        <a class="secondary" id="history-export" href="/api/export/history.csv">Export CSV ↓</a>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Vehicle</th>
+                    <th>Owner</th>
+                    <th>Type</th>
+                    <th>Entry</th>
+                    <th>Exit</th>
+                    <th>Hours</th>
+                    <th>Fee</th>
+                </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+        </table>
+    </div>
+    <div class="pagination-controls">
+        <span class="muted" id="history-page-label">0 sessions</span>
+        <button id="history-prev" class="secondary" type="button">Previous</button>
+        <button id="history-next" class="secondary" type="button">Next</button>
+    </div>
+</section>
+<section class="view" id="view-settings">
+    <div class="panel settings">
+        <h2>Parking location and prices</h2>
+        <p class="muted">Capacity is limited to 200 in this version.</p>
+        <form id="settings-form">
+            <label>Location name<input id="setting-name" maxlength="80" required></label>
+            <label>Address<input id="setting-address" maxlength="200"></label>
+            <label>Total capacity<input id="setting-capacity" type="number" min="1" max="200" required></label>
+            <label>Hourly rate (₹)<input id="setting-rate" type="number" min="1" max="100000" step="0.5" required></label>
+            <fieldset class="rate-grid"><legend>Optional vehicle-specific hourly rates (₹)</legend>
+                <label>Car<input data-rate-type="Car" type="number" min="1" max="100000" step="0.5"></label>
+                <label>Bike<input data-rate-type="Bike" type="number" min="1" max="100000" step="0.5"></label>
+                <label>SUV<input data-rate-type="SUV" type="number" min="1" max="100000" step="0.5"></label>
+                <label>Scooter<input data-rate-type="Scooter" type="number" min="1" max="100000" step="0.5"></label>
+                <label>Auto<input data-rate-type="Auto" type="number" min="1" max="100000" step="0.5"></label>
+                <label>Van<input data-rate-type="Van" type="number" min="1" max="100000" step="0.5"></label>
+                <label>Other<input data-rate-type="Other" type="number" min="1" max="100000" step="0.5"></label>
+            </fieldset>
+            <button class="primary" type="submit">Save settings</button>
+        </form>
+    </div>
+    <div class="panel admin-only" id="create-lot-panel" hidden>
+        <h2>Add another parking location</h2>
+        <form id="lot-form" class="form-grid">
+            <label>Location name<input id="lot-name" required maxlength="80"></label>
+            <label>Address<input id="lot-address" maxlength="200"></label>
+            <label>Capacity<input id="lot-capacity" type="number" min="1" max="200" value="50" required></label>
+            <label>Default hourly rate (₹)<input id="lot-rate" type="number" min="1" max="100000" value="30" required></label>
+            <button class="primary" type="submit">Add parking location</button>
+        </form>
+    </div>
+    <section class="panel danger-zone admin-only" id="clear-data-panel" hidden>
+        <p class="eyebrow">DANGER ZONE</p>
+        <h2>Clear all operational data</h2>
+        <p>This permanently deletes all parked vehicles, parking history, reservations, locations, and custom rates. A fresh Main Parking location is created with capacity 200 and a ₹30 hourly rate.</p>
+        <p><b>Your user accounts, sign-in sessions, and audit log are kept.</b></p>
+        <form id="clear-data-form">
+            <label>Type <code>CLEAR ALL DATA</code> to confirm
+                <input id="clear-data-confirmation" autocomplete="off" required>
+            </label>
+            <button class="danger-button" type="submit">Clear all data</button>
+        </form>
+    </section>
+</section>
+<section class="view" id="view-admin">
+    <div class="panel">
+        <h2>Create operator account</h2>
+        <form id="user-form" class="form-grid">
+            <label>Username<input id="new-username" required maxlength="40"></label>
+            <label>Temporary password<input id="new-password" type="password" required minlength="12" maxlength="200"></label>
+            <label>Role<select id="new-role"><option value="operator">Operator</option><option value="admin">Administrator</option></select></label>
+            <button class="primary" type="submit">Create account</button>
+        </form>
+    </div>
+    <div class="panel"><div class="panel-head"><h2>User accounts</h2><button id="download-backup" class="secondary" type="button">Download database backup</button></div><div class="table-wrap"><table><thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
+    <div class="panel"><h2>Audit log</h2><div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody id="audit-body"></tbody></table></div></div>
+</section>
+</main>
+<footer>
+    <b>Parkwise — Smart Parking Management System</b>
+    <p>Created by BRB Technology · Copyright © <span id="year">
+
+    </span>. All rights reserved.</p>
+    <p>Contact: <a href="mailto:vijaycbade@gmail.com">vijaycbade@gmail.com</a>
+    </p>
+</footer>
+</body>
+</html>

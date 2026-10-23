@@ -1,0 +1,24 @@
+{
+  "name": "parkwise-smart-parking",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Parkwise Smart Parking Management System with persistent backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4",
+    "tesseract.js": "^7.0.0"
+  },
+  "allowScripts": {
+    "better-sqlite3": true
+  }
+}
